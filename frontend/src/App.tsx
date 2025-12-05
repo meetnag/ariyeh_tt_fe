@@ -30,6 +30,32 @@ type EntrupyRequest = {
 
 type ApiError = { message: string };
 
+type NDEFRecordData = {
+  recordType: string;
+  mediaType?: string;
+  id?: string;
+  data: DataView;
+};
+
+type NDEFMessageData = { records: NDEFRecordData[] };
+
+type NDEFReadingEvent = Event & {
+  message?: NDEFMessageData;
+  serialNumber?: string;
+};
+
+type WebNDEFReader = {
+  scan: () => Promise<void>;
+  onreading: ((event: NDEFReadingEvent) => void) | null;
+  onreadingerror: ((event: Event) => void) | null;
+};
+
+declare global {
+  interface Window {
+    NDEFReader?: { new (): WebNDEFReader };
+  }
+}
+
 function AdminPage() {
   const [bagForm, setBagForm] = useState<BagRequest>({
     display_name: "",
@@ -125,14 +151,20 @@ function AdminPage() {
       setScanStatus(null);
       return;
     }
+    const NDEFConstructor = window.NDEFReader;
+    if (!NDEFConstructor) {
+      setError({ message: "Web NFC not available in this context." });
+      setScanStatus(null);
+      return;
+    }
     try {
-      const ndef = new NDEFReader();
+      const ndef = new NDEFConstructor();
       await ndef.scan();
       setScanStatus("Hold tag near the device to scan...");
-      ndef.onreading = (event) => {
+      ndef.onreading = (event: NDEFReadingEvent) => {
         const records = event.message?.records ?? [];
         const decoder = new TextDecoder();
-        const textRecord = records.find((r) => r.recordType === "text");
+        const textRecord = records.find((r: NDEFRecordData) => r.recordType === "text");
         const textValue = textRecord ? decoder.decode(textRecord.data) : undefined;
         const serial = (event as unknown as { serialNumber?: string }).serialNumber;
         const tagValue = textValue || serial;
@@ -222,7 +254,7 @@ function AdminPage() {
         </div>
         <button type="submit">Create + Assign</button>
       </form>
-      {bagResult && (
+      {bagResult !== null && (
         <pre className="result" aria-label="bag-result">
           {JSON.stringify(bagResult, null, 2)}
         </pre>
@@ -349,7 +381,7 @@ function AdminPage() {
         </div>
         <button type="submit">Save Entrupy</button>
       </form>
-      {entrupyResult && (
+      {entrupyResult !== null && (
         <pre className="result" aria-label="entrupy-result">
           {JSON.stringify(entrupyResult, null, 2)}
         </pre>
@@ -391,7 +423,7 @@ function ScanPage() {
           Lookup
         </button>
       </div>
-      {result && (
+      {result !== null && (
         <pre className="result" aria-label="tag-result">
           {JSON.stringify(result, null, 2)}
         </pre>
