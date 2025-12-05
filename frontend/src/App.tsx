@@ -1,7 +1,10 @@
 import { useMemo, useState, type FormEvent } from "react";
 import "./App.css";
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000";
+// Prefer configured API base, otherwise fall back to same origin (production) or localhost (dev)
+const API_BASE =
+  import.meta.env.VITE_API_BASE ||
+  (typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:8000");
 
 type BagRequest = {
   display_name: string;
