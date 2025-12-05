@@ -84,6 +84,13 @@ function AdminPage() {
   const [entrupyResult, setEntrupyResult] = useState<unknown>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [scanStatus, setScanStatus] = useState<string | null>(null);
+  const isLocalhost =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+  const isSecureContext =
+    typeof window !== "undefined" && (window.location.protocol === "https:" || isLocalhost);
+  const webNfcSupported =
+    typeof window !== "undefined" && isSecureContext && "NDEFReader" in window;
 
   const parseError = async (res: Response) => {
     try {
@@ -139,15 +146,17 @@ function AdminPage() {
     setError(null);
     setScanStatus("Starting scan...");
 
-    const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-    if (window.location.protocol !== "https:" && !isLocalhost) {
+    if (!isSecureContext) {
       setError({ message: "Web NFC requires https or localhost." });
       setScanStatus(null);
       return;
     }
 
-    if (!("NDEFReader" in window)) {
-      setError({ message: "Web NFC not supported on this device/browser." });
+    if (!webNfcSupported) {
+      setError({
+        message:
+          "Web NFC not supported on this device/browser. Try Chrome on Android with NFC enabled.",
+      });
       setScanStatus(null);
       return;
     }
@@ -215,13 +224,20 @@ function AdminPage() {
                 required
               />
               <button type="button" className="ghost" onClick={startTagScan}>
-                Scan Tag
+                Scan NFC Tag
               </button>
             </div>
             {scanStatus && <p className="muted small">{scanStatus}</p>}
             <p className="muted small">
-              NFC scan works on compatible devices (e.g., Chrome on Android) over https or localhost. Otherwise, enter the tag code manually.
+              NFC scan uses Web NFC (Chrome on Android, NFC enabled, https/localhost). It does not
+              open the camera. If unsupported, enter the tag code manually.
             </p>
+            {!webNfcSupported && (
+              <p className="muted small">
+                Web NFC not detected in this browser/device. Try Chrome on Android with NFC turned
+                on, or type the tag code.
+              </p>
+            )}
           </label>
           <label className="field">
             <span>Model</span>
