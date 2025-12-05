@@ -1,10 +1,12 @@
 import { useMemo, useState, type FormEvent } from "react";
 import "./App.css";
 
-// Prefer configured API base, otherwise fall back to same origin (production) or localhost (dev)
+// Prefer configured API base. If unset, use deployed backend on Vercel; otherwise fall back to localhost for dev.
 const API_BASE =
   import.meta.env.VITE_API_BASE ||
-  (typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:8000");
+  (typeof window !== "undefined" && window.location.hostname.endsWith("vercel.app")
+    ? "https://ariyeh-tt-be.vercel.app"
+    : "http://127.0.0.1:8000");
 
 type BagRequest = {
   display_name: string;
