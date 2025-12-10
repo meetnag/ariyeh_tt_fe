@@ -18,6 +18,23 @@ type BagRequest = {
   tag_code: string;
 };
 
+type BagWithTagResponse = {
+  bag?: {
+    id?: number;
+    display_name?: string;
+    brand?: string;
+    model?: string | null;
+    style?: string | null;
+    color?: string | null;
+    material?: string | null;
+  };
+  tag?: {
+    tag_code?: string;
+    id?: number;
+    bag_id?: number | null;
+  };
+};
+
 type EntrupyRequest = {
   bag_id: number;
   customer_item_id: string;
@@ -61,7 +78,13 @@ declare global {
   }
 }
 
-function AdminPage() {
+function AdminPage({
+  onBagCreated,
+  mode = "bag",
+}: {
+  onBagCreated?: (payload: BagWithTagResponse) => void;
+  mode?: "bag" | "entrupy";
+}) {
   const [bagForm, setBagForm] = useState<BagRequest>({
     display_name: "",
     brand: "",
@@ -124,6 +147,9 @@ function AdminPage() {
       const newBagId = (data as { bag?: { id?: number } })?.bag?.id;
       if (newBagId) {
         setEntrupyForm((prev) => ({ ...prev, bag_id: newBagId }));
+      }
+      if (onBagCreated) {
+        onBagCreated(data as BagWithTagResponse);
       }
     } catch (err) {
       setError({ message: err instanceof Error ? err.message : "Unknown error" });
@@ -201,213 +227,232 @@ function AdminPage() {
 
   return (
     <div className="card">
-      <h2>Admin: Create Bag + Assign Tag</h2>
-      <form className="form" onSubmit={handleBagSubmit}>
-        <div className="grid">
-          <label className="field">
-            <span>Display name</span>
-            <input
-              value={bagForm.display_name}
-              onChange={(e) => setBagForm({ ...bagForm, display_name: e.target.value })}
-              required
-            />
-          </label>
-          <label className="field">
-            <span>Brand</span>
-            <input
-              value={bagForm.brand}
-              onChange={(e) => setBagForm({ ...bagForm, brand: e.target.value })}
-              required
-            />
-          </label>
-          <label className="field">
-            <span>Tag code</span>
-            <div className="inline-actions">
-              <input
-                value={bagForm.tag_code}
-                onChange={(e) => setBagForm({ ...bagForm, tag_code: e.target.value })}
-                required
-              />
-              <button type="button" className="ghost" onClick={startTagScan}>
-                Scan NFC Tag
-              </button>
+      {mode === "bag" && (
+        <>
+          <h2>Admin: Create Bag + Assign Tag</h2>
+          <form className="form bag-form" onSubmit={handleBagSubmit}>
+            <div className="bag-columns">
+              <div className="bag-column">
+                <label className="field">
+                  <span>Display name</span>
+                  <input
+                    value={bagForm.display_name}
+                    onChange={(e) => setBagForm({ ...bagForm, display_name: e.target.value })}
+                    required
+                  />
+                </label>
+                <label className="field">
+                  <span>Brand</span>
+                  <input
+                    value={bagForm.brand}
+                    onChange={(e) => setBagForm({ ...bagForm, brand: e.target.value })}
+                    required
+                  />
+                </label>
+                <label className="field">
+                  <span>Model</span>
+                  <input
+                    value={bagForm.model}
+                    onChange={(e) => setBagForm({ ...bagForm, model: e.target.value })}
+                  />
+                </label>
+                <label className="field">
+                  <span>Material</span>
+                  <input
+                    value={bagForm.material}
+                    onChange={(e) => setBagForm({ ...bagForm, material: e.target.value })}
+                  />
+                </label>
+              </div>
+
+              <div className="bag-column">
+                <label className="field">
+                  <span>Tag code</span>
+                  <div className="inline-actions">
+                    <input
+                      value={bagForm.tag_code}
+                      onChange={(e) => setBagForm({ ...bagForm, tag_code: e.target.value })}
+                      required
+                    />
+                    <button type="button" className="ghost" onClick={startTagScan}>
+                      Scan NFC Tag
+                    </button>
+                  </div>
+                  {scanStatus && <p className="muted small">{scanStatus}</p>}
+                  {!webNfcSupported && (
+                    <p className="muted small">
+                      Web NFC not detected. Enter the tag code manually or try Chrome on Android with
+                      NFC on.
+                    </p>
+                  )}
+                </label>
+                <label className="field">
+                  <span>Style</span>
+                  <input
+                    value={bagForm.style}
+                    onChange={(e) => setBagForm({ ...bagForm, style: e.target.value })}
+                  />
+                </label>
+                <label className="field">
+                  <span>Color</span>
+                  <input
+                    value={bagForm.color}
+                    onChange={(e) => setBagForm({ ...bagForm, color: e.target.value })}
+                  />
+                </label>
+                <div className="bag-actions">
+                  <button type="submit">Create + Assign</button>
+                </div>
+              </div>
             </div>
-            {scanStatus && <p className="muted small">{scanStatus}</p>}
-            <p className="muted small">
-              NFC scan uses Web NFC (Chrome on Android, NFC enabled, https/localhost). It does not
-              open the camera. If unsupported, enter the tag code manually.
-            </p>
-            {!webNfcSupported && (
-              <p className="muted small">
-                Web NFC not detected in this browser/device. Try Chrome on Android with NFC turned
-                on, or type the tag code.
-              </p>
-            )}
-          </label>
-          <label className="field">
-            <span>Model</span>
-            <input
-              value={bagForm.model}
-              onChange={(e) => setBagForm({ ...bagForm, model: e.target.value })}
-            />
-          </label>
-          <label className="field">
-            <span>Style</span>
-            <input
-              value={bagForm.style}
-              onChange={(e) => setBagForm({ ...bagForm, style: e.target.value })}
-            />
-          </label>
-          <label className="field">
-            <span>Color</span>
-            <input
-              value={bagForm.color}
-              onChange={(e) => setBagForm({ ...bagForm, color: e.target.value })}
-            />
-          </label>
-          <label className="field">
-            <span>Material</span>
-            <input
-              value={bagForm.material}
-              onChange={(e) => setBagForm({ ...bagForm, material: e.target.value })}
-            />
-          </label>
-        </div>
-        <button type="submit">Create + Assign</button>
-      </form>
-      {bagResult !== null && (
-        <pre className="result" aria-label="bag-result">
-          {JSON.stringify(bagResult, null, 2)}
-        </pre>
+          </form>
+          {bagResult !== null && (
+            <pre className="result" aria-label="bag-result">
+              {JSON.stringify(bagResult, null, 2)}
+            </pre>
+          )}
+          {error && <p className="error">{error.message}</p>}
+        </>
       )}
 
-      <h2>Admin: Upsert Entrupy</h2>
-      <form className="form" onSubmit={handleEntrupySubmit}>
-        <div className="grid">
-          <label className="field">
-            <span>Bag ID</span>
-            <input
-              type="number"
-              value={entrupyForm.bag_id}
-              onChange={(e) =>
-                setEntrupyForm({ ...entrupyForm, bag_id: Number(e.target.value) })
-              }
-              required
-            />
-          </label>
-          <label className="field">
-            <span>Customer item id</span>
-            <input
-              value={entrupyForm.customer_item_id}
-              onChange={(e) =>
-                setEntrupyForm({ ...entrupyForm, customer_item_id: e.target.value })
-              }
-              required
-            />
-          </label>
-          <label className="field">
-            <span>Authentication status</span>
-            <input
-              value={entrupyForm.authentication_status ?? ""}
-              onChange={(e) =>
-                setEntrupyForm({ ...entrupyForm, authentication_status: e.target.value })
-              }
-            />
-          </label>
-          <label className="field">
-            <span>Certificate URL</span>
-            <input
-              value={entrupyForm.certificate_url ?? ""}
-              onChange={(e) =>
-                setEntrupyForm({ ...entrupyForm, certificate_url: e.target.value })
-              }
-            />
-          </label>
-          <label className="field">
-            <span>Brand</span>
-            <input
-              value={entrupyForm.brand ?? ""}
-              onChange={(e) => setEntrupyForm({ ...entrupyForm, brand: e.target.value })}
-            />
-          </label>
-          <label className="field">
-            <span>Model</span>
-            <input
-              value={entrupyForm.model ?? ""}
-              onChange={(e) => setEntrupyForm({ ...entrupyForm, model: e.target.value })}
-            />
-          </label>
-          <label className="field">
-            <span>Style</span>
-            <input
-              value={entrupyForm.style ?? ""}
-              onChange={(e) => setEntrupyForm({ ...entrupyForm, style: e.target.value })}
-            />
-          </label>
-          <label className="field">
-            <span>Color</span>
-            <input
-              value={entrupyForm.color ?? ""}
-              onChange={(e) => setEntrupyForm({ ...entrupyForm, color: e.target.value })}
-            />
-          </label>
-          <label className="field">
-            <span>Material</span>
-            <input
-              value={entrupyForm.material ?? ""}
-              onChange={(e) => setEntrupyForm({ ...entrupyForm, material: e.target.value })}
-            />
-          </label>
-          <label className="field">
-            <span>Condition grade</span>
-            <input
-              value={entrupyForm.condition_grade ?? ""}
-              onChange={(e) =>
-                setEntrupyForm({ ...entrupyForm, condition_grade: e.target.value })
-              }
-            />
-          </label>
-          <label className="field field-textarea">
-            <span>Dimensions (JSON)</span>
-            <textarea
-              value={
-                entrupyForm.dimensions ? JSON.stringify(entrupyForm.dimensions, null, 2) : ""
-              }
-              onChange={(e) => {
-                try {
-                  const parsed = e.target.value ? JSON.parse(e.target.value) : undefined;
-                  setEntrupyForm({ ...entrupyForm, dimensions: parsed });
-                } catch {
-                  setError({ message: "Invalid JSON for dimensions" });
-                }
-              }}
-            />
-          </label>
-          <label className="field field-textarea">
-            <span>Catalog raw (JSON)</span>
-            <textarea
-              value={
-                entrupyForm.catalog_raw ? JSON.stringify(entrupyForm.catalog_raw, null, 2) : ""
-              }
-              onChange={(e) => {
-                try {
-                  const parsed = e.target.value ? JSON.parse(e.target.value) : undefined;
-                  setEntrupyForm({ ...entrupyForm, catalog_raw: parsed });
-                } catch {
-                  setError({ message: "Invalid JSON for catalog_raw" });
-                }
-              }}
-            />
-          </label>
-        </div>
-        <button type="submit">Save Entrupy</button>
-      </form>
-      {entrupyResult !== null && (
-        <pre className="result" aria-label="entrupy-result">
-          {JSON.stringify(entrupyResult, null, 2)}
-        </pre>
+      {mode === "entrupy" && (
+        <>
+          <h2>Admin: Upsert Entrupy</h2>
+          <form className="form entrupy-form" onSubmit={handleEntrupySubmit}>
+            <div className="entrupy-columns">
+              <div className="entrupy-column">
+                <label className="field">
+                  <span>Bag ID</span>
+                  <input
+                    type="number"
+                    value={entrupyForm.bag_id}
+                    onChange={(e) =>
+                      setEntrupyForm({ ...entrupyForm, bag_id: Number(e.target.value) })
+                    }
+                    required
+                  />
+                </label>
+                <label className="field">
+                  <span>Customer item id</span>
+                  <input
+                    value={entrupyForm.customer_item_id}
+                    onChange={(e) =>
+                      setEntrupyForm({ ...entrupyForm, customer_item_id: e.target.value })
+                    }
+                    required
+                  />
+                </label>
+                <label className="field">
+                  <span>Authentication status</span>
+                  <input
+                    value={entrupyForm.authentication_status ?? ""}
+                    onChange={(e) =>
+                      setEntrupyForm({ ...entrupyForm, authentication_status: e.target.value })
+                    }
+                  />
+                </label>
+                <label className="field">
+                  <span>Certificate URL</span>
+                  <input
+                    value={entrupyForm.certificate_url ?? ""}
+                    onChange={(e) =>
+                      setEntrupyForm({ ...entrupyForm, certificate_url: e.target.value })
+                    }
+                  />
+                </label>
+                <label className="field">
+                  <span>Brand</span>
+                  <input
+                    value={entrupyForm.brand ?? ""}
+                    onChange={(e) => setEntrupyForm({ ...entrupyForm, brand: e.target.value })}
+                  />
+                </label>
+                <label className="field">
+                  <span>Model</span>
+                  <input
+                    value={entrupyForm.model ?? ""}
+                    onChange={(e) => setEntrupyForm({ ...entrupyForm, model: e.target.value })}
+                  />
+                </label>
+              </div>
+
+              <div className="entrupy-column">
+                <label className="field">
+                  <span>Style</span>
+                  <input
+                    value={entrupyForm.style ?? ""}
+                    onChange={(e) => setEntrupyForm({ ...entrupyForm, style: e.target.value })}
+                  />
+                </label>
+                <label className="field">
+                  <span>Color</span>
+                  <input
+                    value={entrupyForm.color ?? ""}
+                    onChange={(e) => setEntrupyForm({ ...entrupyForm, color: e.target.value })}
+                  />
+                </label>
+                <label className="field">
+                  <span>Material</span>
+                  <input
+                    value={entrupyForm.material ?? ""}
+                    onChange={(e) => setEntrupyForm({ ...entrupyForm, material: e.target.value })}
+                  />
+                </label>
+                <label className="field">
+                  <span>Condition grade</span>
+                  <input
+                    value={entrupyForm.condition_grade ?? ""}
+                    onChange={(e) =>
+                      setEntrupyForm({ ...entrupyForm, condition_grade: e.target.value })
+                    }
+                  />
+                </label>
+                <label className="field field-textarea">
+                  <span>Dimensions (JSON)</span>
+                  <textarea
+                    value={
+                      entrupyForm.dimensions ? JSON.stringify(entrupyForm.dimensions, null, 2) : ""
+                    }
+                    onChange={(e) => {
+                      try {
+                        const parsed = e.target.value ? JSON.parse(e.target.value) : undefined;
+                        setEntrupyForm({ ...entrupyForm, dimensions: parsed });
+                      } catch {
+                        setError({ message: "Invalid JSON for dimensions" });
+                      }
+                    }}
+                  />
+                </label>
+                <label className="field field-textarea">
+                  <span>Catalog raw (JSON)</span>
+                  <textarea
+                    value={
+                      entrupyForm.catalog_raw ? JSON.stringify(entrupyForm.catalog_raw, null, 2) : ""
+                    }
+                    onChange={(e) => {
+                      try {
+                        const parsed = e.target.value ? JSON.parse(e.target.value) : undefined;
+                        setEntrupyForm({ ...entrupyForm, catalog_raw: parsed });
+                      } catch {
+                        setError({ message: "Invalid JSON for catalog_raw" });
+                      }
+                    }}
+                  />
+                </label>
+                <div className="entrupy-actions">
+                  <button type="submit">Save Entrupy</button>
+                </div>
+              </div>
+            </div>
+          </form>
+          {entrupyResult !== null && (
+            <pre className="result" aria-label="entrupy-result">
+              {JSON.stringify(entrupyResult, null, 2)}
+            </pre>
+          )}
+          {error && <p className="error">{error.message}</p>}
+        </>
       )}
-      {error && <p className="error">{error.message}</p>}
     </div>
   );
 }
@@ -454,16 +499,126 @@ function ScanPage() {
   );
 }
 
-function App() {
+type SectionKey = "bag" | "entrupy" | "scan" | "inventory" | "settings";
+
+function InventoryTable({ rows }: { rows: BagWithTagResponse[] }) {
   return (
-    <div className="app">
-      <header>
-        <h1>Bag Tagging Admin</h1>
-        <p className="muted">API base: {API_BASE}</p>
-      </header>
-      <main className="stack">
-        <AdminPage />
-        <ScanPage />
+    <div className="card">
+      <div className="section-header">
+        <h2>Inventory</h2>
+        <p className="muted small">Showing last {rows.length || 0} created bags in this session.</p>
+      </div>
+      {rows.length === 0 ? (
+        <p className="muted">No bags yet. Create one from “Bag Tagging”.</p>
+      ) : (
+        <div className="table-wrapper">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Display name</th>
+                <th>Brand</th>
+                <th>Model</th>
+                <th>Style</th>
+                <th>Color</th>
+                <th>Material</th>
+                <th>Tag code</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, idx) => {
+                const bag = row.bag ?? {};
+                const tag = row.tag ?? {};
+                return (
+                  <tr key={`${tag.tag_code ?? "row"}-${idx}`}>
+                    <td>{bag.display_name ?? "-"}</td>
+                    <td>{bag.brand ?? "-"}</td>
+                    <td>{bag.model ?? "-"}</td>
+                    <td>{bag.style ?? "-"}</td>
+                    <td>{bag.color ?? "-"}</td>
+                    <td>{bag.material ?? "-"}</td>
+                    <td>{tag.tag_code ?? "-"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SettingsPage() {
+  return (
+    <div className="card">
+      <h2>Settings</h2>
+      <p className="muted">No additional settings yet.</p>
+    </div>
+  );
+}
+
+function App() {
+  const [section, setSection] = useState<SectionKey>("bag");
+  const [inventory, setInventory] = useState<BagWithTagResponse[]>([]);
+
+  const addToInventory = (data: BagWithTagResponse) => {
+    setInventory((prev) => [data, ...prev].slice(0, 20));
+  };
+
+  const renderContent = () => {
+    switch (section) {
+      case "bag":
+        return <AdminPage onBagCreated={addToInventory} />;
+      case "entrupy":
+        return <AdminPage onBagCreated={addToInventory} mode="entrupy" />;
+      case "scan":
+        return <ScanPage />;
+      case "inventory":
+        return <InventoryTable rows={inventory} />;
+      case "settings":
+        return <SettingsPage />;
+      default:
+        return <AdminPage onBagCreated={addToInventory} />;
+    }
+  };
+
+  return (
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="brand">
+          <img src="/dflogo.svg" alt="DF logo" className="brand-logo" />
+        </div>
+        <nav className="nav">
+          {[
+            { key: "bag", label: "Bag Tagging" },
+            { key: "entrupy", label: "Entrupy Tagging" },
+            { key: "scan", label: "Scan Tag" },
+            { key: "inventory", label: "Inventory" },
+            { key: "settings", label: "Settings" },
+          ].map((item) => (
+            <button
+              key={item.key}
+              className={`nav-item ${section === item.key ? "active" : ""}`}
+              onClick={() => setSection(item.key as SectionKey)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </nav>
+      </aside>
+
+      <main className="content">
+        <header className="page-header">
+          <h1>
+            {section === "bag" && "Bag Tagging"}
+            {section === "entrupy" && "Entrupy Tagging"}
+            {section === "scan" && "Scan Tag"}
+            {section === "inventory" && "Inventory"}
+            {section === "settings" && "Settings"}
+          </h1>
+          <p className="muted">Manage tags, bags, and Entrupy data.</p>
+        </header>
+        {renderContent()}
       </main>
     </div>
   );
