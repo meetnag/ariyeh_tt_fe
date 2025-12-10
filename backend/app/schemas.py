@@ -82,6 +82,19 @@ class BagWithTag(BaseModel):
         orm_mode = True
 
 
+class BagSummary(BaseModel):
+    id: int
+    display_name: str
+    brand: str
+    model: Optional[str] = None
+    style: Optional[str] = None
+    color: Optional[str] = None
+    tag_code: Optional[str] = None
+
+    class Config:
+        orm_mode = True
+
+
 class TagLookupResponse(BaseModel):
     tag: Tag
     bag: Optional[Bag] = None

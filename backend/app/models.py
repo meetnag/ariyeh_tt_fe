@@ -80,9 +80,9 @@ class EntrupyItem(Base):
     style: Mapped[Optional[str]] = mapped_column(Text)
     color: Mapped[Optional[str]] = mapped_column(Text)
     material: Mapped[Optional[str]] = mapped_column(Text)
-    dimensions: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB)
+    dimensions: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, nullable=True)
     condition_grade: Mapped[Optional[str]] = mapped_column(Text)
-    catalog_raw: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB)
+    catalog_raw: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )

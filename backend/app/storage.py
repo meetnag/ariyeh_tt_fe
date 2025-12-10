@@ -122,5 +122,23 @@ class InMemoryStore:
         entrupy = self.entrupy_items.get(bag.id) if bag else None
         return tag, bag, entrupy
 
+    def list_bags(self) -> list[schemas.BagSummary]:
+        ordered_bags = sorted(self.bags.values(), key=lambda b: b.id, reverse=True)
+        summaries: list[schemas.BagSummary] = []
+        for bag in ordered_bags:
+            tag = next((t for t in self.tags.values() if t.bag_id == bag.id), None)
+            summaries.append(
+                schemas.BagSummary(
+                    id=bag.id,
+                    display_name=bag.display_name,
+                    brand=bag.brand,
+                    model=bag.model,
+                    style=bag.style,
+                    color=bag.color,
+                    tag_code=tag.tag_code if tag else None,
+                )
+            )
+        return summaries
+
 
 in_memory_store = InMemoryStore()

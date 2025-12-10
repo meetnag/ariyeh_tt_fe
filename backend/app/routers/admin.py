@@ -75,3 +75,42 @@ def upsert_entrupy(payload: schemas.EntrupyCreate, db: Session = Depends(get_db)
     db.refresh(entrupy_item)
 
     return entrupy_item
+
+
+@router.get("/bags", response_model=list[schemas.BagSummary])
+def list_bags(db: Session = Depends(get_db)) -> list[schemas.BagSummary]:
+    if USE_IN_MEMORY_STORAGE:
+        return in_memory_store.list_bags()
+
+    tag_subquery = (
+        select(Tag.tag_code)
+        .where(Tag.bag_id == Bag.id)
+        .order_by(Tag.id.desc())
+        .limit(1)
+        .scalar_subquery()
+    )
+
+    rows = db.execute(
+        select(
+            Bag.id,
+            Bag.display_name,
+            Bag.brand,
+            Bag.model,
+            Bag.style,
+            Bag.color,
+            tag_subquery.label("tag_code"),
+        ).order_by(Bag.id.desc())
+    ).all()
+
+    return [
+        schemas.BagSummary(
+            id=row.id,
+            display_name=row.display_name,
+            brand=row.brand,
+            model=row.model,
+            style=row.style,
+            color=row.color,
+            tag_code=row.tag_code,
+        )
+        for row in rows
+    ]

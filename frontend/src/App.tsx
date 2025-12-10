@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import "./App.css";
 
 // Prefer configured API base. If unset, use deployed backend on Vercel; otherwise fall back to localhost for dev.
@@ -35,6 +35,16 @@ type BagWithTagResponse = {
   };
 };
 
+type InventoryRow = {
+  id?: number;
+  display_name?: string;
+  brand?: string;
+  model?: string | null;
+  style?: string | null;
+  color?: string | null;
+  tag_code?: string | null;
+};
+
 type EntrupyRequest = {
   bag_id: number;
   customer_item_id: string;
@@ -47,7 +57,6 @@ type EntrupyRequest = {
   material?: string;
   dimensions?: Record<string, unknown>;
   condition_grade?: string;
-  catalog_raw?: Record<string, unknown>;
 };
 
 type ApiError = { message: string };
@@ -106,7 +115,6 @@ function AdminPage({
     material: "Leather",
     dimensions: { width_cm: 30, height_cm: 20, depth_cm: 10 },
     condition_grade: "A",
-    catalog_raw: { source: "demo" },
   });
   const [bagResult, setBagResult] = useState<unknown>(null);
   const [entrupyResult, setEntrupyResult] = useState<unknown>(null);
@@ -421,22 +429,6 @@ function AdminPage({
                     }}
                   />
                 </label>
-                <label className="field field-textarea">
-                  <span>Catalog raw (JSON)</span>
-                  <textarea
-                    value={
-                      entrupyForm.catalog_raw ? JSON.stringify(entrupyForm.catalog_raw, null, 2) : ""
-                    }
-                    onChange={(e) => {
-                      try {
-                        const parsed = e.target.value ? JSON.parse(e.target.value) : undefined;
-                        setEntrupyForm({ ...entrupyForm, catalog_raw: parsed });
-                      } catch {
-                        setError({ message: "Invalid JSON for catalog_raw" });
-                      }
-                    }}
-                  />
-                </label>
                 <div className="entrupy-actions">
                   <button type="submit">Save Entrupy</button>
                 </div>
@@ -498,45 +490,52 @@ function ScanPage() {
 
 type SectionKey = "bag" | "entrupy" | "scan" | "inventory" | "settings";
 
-function InventoryTable({ rows }: { rows: BagWithTagResponse[] }) {
+function InventoryTable({
+  rows,
+  loading,
+  error,
+}: {
+  rows: InventoryRow[];
+  loading?: boolean;
+  error?: string | null;
+}) {
   return (
     <div className="card">
       <div className="section-header">
         <h2>Inventory</h2>
-        <p className="muted small">Showing last {rows.length || 0} created bags in this session.</p>
+        <p className="muted small">
+          {loading ? "Loading bags..." : `Showing ${rows.length || 0} bag(s) from the database.`}
+        </p>
       </div>
-      {rows.length === 0 ? (
+      {error && <p className="error">{error}</p>}
+      {rows.length === 0 && !loading ? (
         <p className="muted">No bags yet. Create one from “Bag Tagging”.</p>
       ) : (
         <div className="table-wrapper">
           <table className="table">
             <thead>
               <tr>
+                <th>Tag code</th>
+                <th>ID</th>
                 <th>Display name</th>
                 <th>Brand</th>
                 <th>Model</th>
                 <th>Style</th>
                 <th>Color</th>
-                <th>Material</th>
-                <th>Tag code</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((row, idx) => {
-                const bag = row.bag ?? {};
-                const tag = row.tag ?? {};
-                return (
-                  <tr key={`${tag.tag_code ?? "row"}-${idx}`}>
-                    <td>{bag.display_name ?? "-"}</td>
-                    <td>{bag.brand ?? "-"}</td>
-                    <td>{bag.model ?? "-"}</td>
-                    <td>{bag.style ?? "-"}</td>
-                    <td>{bag.color ?? "-"}</td>
-                    <td>{bag.material ?? "-"}</td>
-                    <td>{tag.tag_code ?? "-"}</td>
-                  </tr>
-                );
-              })}
+              {rows.map((bag, idx) => (
+                <tr key={bag.id ?? idx}>
+                  <td>{bag.tag_code ?? "-"}</td>
+                  <td>{bag.id ?? "-"}</td>
+                  <td>{bag.display_name ?? "-"}</td>
+                  <td>{bag.brand ?? "-"}</td>
+                  <td>{bag.model ?? "-"}</td>
+                  <td>{bag.style ?? "-"}</td>
+                  <td>{bag.color ?? "-"}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -556,11 +555,38 @@ function SettingsPage() {
 
 function App() {
   const [section, setSection] = useState<SectionKey>("bag");
-  const [inventory, setInventory] = useState<BagWithTagResponse[]>([]);
+  const [inventory, setInventory] = useState<InventoryRow[]>([]);
+  const [inventoryLoading, setInventoryLoading] = useState(false);
+  const [inventoryError, setInventoryError] = useState<string | null>(null);
 
   const addToInventory = (data: BagWithTagResponse) => {
-    setInventory((prev) => [data, ...prev].slice(0, 20));
+    const bag = data.bag;
+    if (!bag) return;
+    setInventory((prev) => [{ ...bag }, ...prev].slice(0, 50));
   };
+
+  const fetchInventory = useCallback(async () => {
+    setInventoryLoading(true);
+    setInventoryError(null);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/bags`);
+      if (!res.ok) {
+        throw new Error(`Failed to load bags (${res.status})`);
+      }
+      const data = (await res.json()) as InventoryRow[];
+      setInventory(data);
+    } catch (err) {
+      setInventoryError(err instanceof Error ? err.message : "Unable to load inventory");
+    } finally {
+      setInventoryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (section === "inventory") {
+      void fetchInventory();
+    }
+  }, [section, fetchInventory]);
 
   const renderContent = () => {
     switch (section) {
@@ -571,7 +597,7 @@ function App() {
       case "scan":
         return <ScanPage />;
       case "inventory":
-        return <InventoryTable rows={inventory} />;
+        return <InventoryTable rows={inventory} loading={inventoryLoading} error={inventoryError} />;
       case "settings":
         return <SettingsPage />;
       default:
