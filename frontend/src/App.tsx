@@ -229,7 +229,6 @@ function AdminPage({
     <div className="card">
       {mode === "bag" && (
         <>
-          <h2>Admin: Create Bag + Assign Tag</h2>
           <form className="form bag-form" onSubmit={handleBagSubmit}>
             <div className="bag-columns">
               <div className="bag-column">
@@ -317,7 +316,6 @@ function AdminPage({
 
       {mode === "entrupy" && (
         <>
-          <h2>Admin: Upsert Entrupy</h2>
           <form className="form entrupy-form" onSubmit={handleEntrupySubmit}>
             <div className="entrupy-columns">
               <div className="entrupy-column">
@@ -478,7 +476,6 @@ function ScanPage() {
 
   return (
     <div className="card">
-      <h2>Scan Tag</h2>
       <div className="row">
         <input
           placeholder="Tag code"
@@ -616,7 +613,9 @@ function App() {
             {section === "inventory" && "Inventory"}
             {section === "settings" && "Settings"}
           </h1>
-          <p className="muted">Manage tags, bags, and Entrupy data.</p>
+          <p className="muted">
+            {section === "bag" ? "Create Bag and Assign Tag" : "Manage tags, bags, and Entrupy data."}
+          </p>
         </header>
         {renderContent()}
       </main>
