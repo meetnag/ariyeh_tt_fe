@@ -451,6 +451,7 @@ function ScanPage() {
   const [tagCode, setTagCode] = useState("");
   const [result, setResult] = useState<unknown>(null);
   const [error, setError] = useState<ApiError | null>(null);
+  const [scanStatus, setScanStatus] = useState<string | null>(null);
 
   const disabled = useMemo(() => tagCode.trim().length === 0, [tagCode]);
 
@@ -466,6 +467,68 @@ function ScanPage() {
     }
   };
 
+  const startTagScan = async () => {
+    setError(null);
+    setScanStatus("Starting scan...");
+
+    const isLocalhost =
+      typeof window !== "undefined" &&
+      (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+    const isSecureContext =
+      typeof window !== "undefined" && (window.location.protocol === "https:" || isLocalhost);
+    const webNfcSupported =
+      typeof window !== "undefined" && isSecureContext && "NDEFReader" in window;
+
+    if (!isSecureContext) {
+      setError({ message: "Web NFC requires https or localhost." });
+      setScanStatus(null);
+      return;
+    }
+
+    if (!webNfcSupported) {
+      setError({
+        message:
+          "Web NFC not supported on this device/browser. Try Chrome on Android with NFC enabled.",
+      });
+      setScanStatus(null);
+      return;
+    }
+
+    const NDEFConstructor = window.NDEFReader;
+    if (!NDEFConstructor) {
+      setError({ message: "Web NFC not available in this context." });
+      setScanStatus(null);
+      return;
+    }
+
+    try {
+      const ndef = new NDEFConstructor();
+      await ndef.scan();
+      setScanStatus("Hold tag near the device to scan...");
+      ndef.onreading = (event: NDEFReadingEvent) => {
+        const records = event.message?.records ?? [];
+        const decoder = new TextDecoder();
+        const textRecord = records.find((r: NDEFRecordData) => r.recordType === "text");
+        const textValue = textRecord ? decoder.decode(textRecord.data) : undefined;
+        const serial = (event as unknown as { serialNumber?: string }).serialNumber;
+        const tagValue = textValue || serial;
+        if (tagValue) {
+          setTagCode(tagValue);
+          setScanStatus(`Scanned tag: ${tagValue}`);
+        } else {
+          setScanStatus("Scanned, but no data found on tag.");
+        }
+      };
+      ndef.onreadingerror = () => {
+        setError({ message: "Tag read error. Please try again." });
+        setScanStatus(null);
+      };
+    } catch (err) {
+      setError({ message: err instanceof Error ? err.message : "Failed to start scan" });
+      setScanStatus(null);
+    }
+  };
+
   return (
     <div className="card">
       <div className="row">
@@ -474,10 +537,14 @@ function ScanPage() {
           value={tagCode}
           onChange={(e) => setTagCode(e.target.value)}
         />
+        <button type="button" className="ghost" onClick={startTagScan}>
+          Scan NFC Tag
+        </button>
         <button onClick={handleLookup} disabled={disabled}>
           Lookup
         </button>
       </div>
+      {scanStatus && <p className="muted small">{scanStatus}</p>}
       {result !== null && (
         <pre className="result" aria-label="tag-result">
           {JSON.stringify(result, null, 2)}
