@@ -698,6 +698,24 @@ function App() {
 
       <main className="content">
         <header className="page-header">
+          <div className="mobile-nav">
+            <label className="field">
+              <span>Go to</span>
+              <select value={section} onChange={(e) => setSection(e.target.value as SectionKey)}>
+                {[
+                  { key: "bag", label: "Bag Tagging" },
+                  { key: "entrupy", label: "Entrupy Tagging" },
+                  { key: "scan", label: "Scan Tag" },
+                  { key: "inventory", label: "Inventory" },
+                  { key: "settings", label: "Settings" },
+                ].map((item) => (
+                  <option key={item.key} value={item.key}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
           <h1>
             {section === "bag" && "Bag Tagging"}
             {section === "entrupy" && "Entrupy Tagging"}
