@@ -569,7 +569,6 @@ function InventoryTable({
   return (
     <div className="card">
       <div className="section-header">
-        <h2>Inventory</h2>
         <p className="muted small">
           {loading ? "Loading bags..." : `Showing ${rows.length || 0} bag(s) from the database.`}
         </p>
